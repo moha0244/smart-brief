@@ -146,8 +146,7 @@ function ConversationItem({
           icon={<FiTrash2 className="w-4 h-4" />}
           variant="danger"
           size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
+          onClick={() => {
             onDelete();
           }}
           className="opacity-0 group-hover:opacity-100 ml-2"
