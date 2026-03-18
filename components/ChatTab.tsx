@@ -228,7 +228,7 @@ export function ChatTab({ documentId }: ChatTabProps) {
   const processChunks = (
     allChunks: DocumentChunk[],
     questionEmbedding: number[],
-  ) => {
+  ): ChunkWithSimilarity[] => {
     return allChunks.map((chunk) => {
       const chunkEmbedding = parseEmbedding(chunk.embedding);
 
@@ -236,6 +236,7 @@ export function ChatTab({ documentId }: ChatTabProps) {
         console.log(`⚠️ Embedding vide pour chunk ${chunk.chunk_index}`);
         return {
           ...chunk,
+          embedding: [], // Ensure it's number[]
           similarity: 0,
         };
       }
@@ -247,7 +248,7 @@ export function ChatTab({ documentId }: ChatTabProps) {
 
       return {
         ...chunk,
-        embedding: chunkEmbedding,
+        embedding: chunkEmbedding, 
         similarity,
       };
     });
