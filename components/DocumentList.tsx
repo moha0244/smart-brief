@@ -25,11 +25,11 @@ export function DocumentList({
 
   // Hooks pour la logique métier
   const { documents, loading, fetchDocuments } = useDocuments(
-    sessionToken!,
+    sessionToken || "",
     filterStatus,
     refreshKey,
   );
-  const documentActions = useDocumentActions(sessionToken!, fetchDocuments);
+  const documentActions = useDocumentActions(sessionToken || "", fetchDocuments);
 
   // Filtre les documents selon la recherche
   const filteredDocuments = searchQuery
@@ -45,6 +45,7 @@ export function DocumentList({
     }
   }, [documents, onCountChange]);
 
+  // Early return if no session token
   if (!sessionToken) {
     return (
       <div className="text-center py-12">
