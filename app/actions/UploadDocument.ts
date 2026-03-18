@@ -67,25 +67,26 @@ async function extractTextWithOCR(
 
     console.log(`✅ OCR réussi: ${text.length} caractères sur ${pages} pages`);
     return { text, pages };
-  } catch (error: ApiError) {
+  } catch (error: unknown) {
+    const apiError = error as ApiError;
     console.error("❌ Erreur OCR détaillée:", {
-      message: error.message,
-      status: error.status,
-      statusText: error.statusText,
-      name: error.name,
+      message: apiError.message,
+      status: apiError.status,
+      statusText: apiError.statusText,
+      name: apiError.name,
     });
 
     // Messages d'erreur spécifiques
-    if (error.message?.includes("File size")) {
+    if (apiError.message?.includes("File size")) {
       throw new Error("Le fichier est trop volumineux pour l'OCR (max 20MB)");
-    } else if (error.message?.includes("quota")) {
+    } else if (apiError.message?.includes("quota")) {
       throw new Error("Quota d'API dépassé. Réessayez plus tard.");
-    } else if (error.message?.includes("invalid")) {
+    } else if (apiError.message?.includes("invalid")) {
       throw new Error("Format de fichier invalide pour l'OCR");
-    } else if (error.message?.includes("text")) {
+    } else if (apiError.message?.includes("text")) {
       throw new Error("Aucun texte détecté dans le document scanné");
     } else {
-      throw new Error(`Échec de l'OCR: ${error.message || "Erreur inconnue"}`);
+      throw new Error(`Échec de l'OCR: ${apiError.message || "Erreur inconnue"}`);
     }
   }
 }

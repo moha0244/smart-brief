@@ -87,6 +87,8 @@ export interface ApiError {
   message: string;
   status?: number;
   code?: string;
+  statusText?: string;
+  name?: string;
   details?: Record<string, string | number | boolean>;
 }
 
