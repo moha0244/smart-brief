@@ -23,7 +23,7 @@ interface ExportData {
   takeaways?: string[];
 }
 
-interface ExportMenuProps<T = ExportData> {
+interface ExportMenuProps<T extends ExportData = ExportData> {
   data: T;
   filename?: string;
   formats?: Array<"json" | "csv" | "txt" | "pdf">;
@@ -32,7 +32,7 @@ interface ExportMenuProps<T = ExportData> {
   menuClassName?: string;
 }
 
-export function ExportMenu<T = ExportData>({
+export function ExportMenu<T extends ExportData = ExportData>({
   data,
   filename = "export",
   formats = ["json", "csv", "txt"],

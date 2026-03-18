@@ -17,6 +17,7 @@ import {
   ChunkWithSimilarity,
   Source,
   DocumentChunk,
+  DatabaseEmbedding,
 } from "@/lib/types";
 
 export function ChatTab({ documentId }: ChatTabProps) {
@@ -172,7 +173,7 @@ export function ChatTab({ documentId }: ChatTabProps) {
       setConversationToDelete(null);
     }
   };
-  const parseEmbedding = (emb: any): number[] => {
+  const parseEmbedding = (emb: DatabaseEmbedding): number[] => {
     // Si c'est déjà un tableau
     if (Array.isArray(emb)) return emb;
 

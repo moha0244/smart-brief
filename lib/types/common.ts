@@ -37,11 +37,16 @@ export interface ResumeData {
   takeaways?: string[];
 }
 
+// Types pour les embeddings
+export type VectorEmbedding = number[];
+export type SerializedEmbedding = string; // Format: "[-0.001, 0.002, ...]" ou "-0.001,-0.002,..."
+export type DatabaseEmbedding = VectorEmbedding | SerializedEmbedding;
+
 export interface DocumentChunk {
   id: string;
   content: string;
   chunk_index: number;
-  embedding: number[] | Record<string, any>;
+  embedding: DatabaseEmbedding;
 }
 
 export interface ChunkWithSimilarity extends DocumentChunk {
@@ -77,10 +82,23 @@ export interface DocumentFilters {
   };
 }
 
+// Types pour les erreurs
+export interface ApiError {
+  message: string;
+  status?: number;
+  code?: string;
+  details?: Record<string, string | number | boolean>;
+}
+
+// Types pour les métadonnées
+export interface DocumentMetadata {
+  [key: string]: string | number | boolean;
+}
+
 // Types pour les exports
 export type ExportFormat = "json" | "csv" | "txt" | "pdf";
 
-export interface ExportOptions<T = unknown> {
+export interface ExportOptions<T = ResumeData & { flashcards?: Flashcard[] }> {
   format: ExportFormat;
   filename: string;
   data: T;

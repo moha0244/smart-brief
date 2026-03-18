@@ -2,6 +2,7 @@
 "use server";
 
 import { supabase } from "@/lib/supabase-admin";
+import { ApiError } from "@/lib/types/common";
 import { PROMPTS } from "@/lib/prompts";
 // @ts-expect-error - pdf-parse n'a pas de types TypeScript
 import pdf from "pdf-parse";
@@ -66,7 +67,7 @@ async function extractTextWithOCR(
 
     console.log(`✅ OCR réussi: ${text.length} caractères sur ${pages} pages`);
     return { text, pages };
-  } catch (error: any) {
+  } catch (error: ApiError) {
     console.error("❌ Erreur OCR détaillée:", {
       message: error.message,
       status: error.status,
