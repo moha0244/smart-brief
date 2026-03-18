@@ -25,11 +25,11 @@ export function DocumentList({
 
   // Hooks pour la logique métier
   const { documents, loading, fetchDocuments } = useDocuments(
-    sessionToken,
+    sessionToken!,
     filterStatus,
     refreshKey,
   );
-  const documentActions = useDocumentActions(sessionToken, fetchDocuments);
+  const documentActions = useDocumentActions(sessionToken!, fetchDocuments);
 
   // Filtre les documents selon la recherche
   const filteredDocuments = searchQuery

@@ -49,6 +49,12 @@ export interface ChunkWithSimilarity extends DocumentChunk {
   similarity: number;
 }
 
+export interface Source {
+  page: number;
+  text: string;
+  content?: string;
+}
+
 // Types pour les états de chargement
 export interface LoadingState {
   loading: boolean;

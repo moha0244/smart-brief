@@ -227,6 +227,7 @@ export async function uploadDocument(formData: FormData) {
       docId: doc.id,
       extractionSuccess,
       extractionMessage: extractionMessage || undefined,
+      pages: numPages,
     };
   } catch (error) {
     console.error(" Erreur globale:", error);
@@ -243,14 +244,18 @@ async function asyncPool<T, R>(
   array: T[],
   iteratorFn: (item: T, index: number) => Promise<R>,
 ): Promise<R[]> {
-  const ret: R[] = [];
+  const ret: Promise<R>[] = [];
   const executing: Promise<R>[] = [];
   for (const [index, item] of array.entries()) {
-    const p = Promise.resolve().then(() => iteratorFn(item, index));
+    const p = iteratorFn(item, index);
     ret.push(p);
 
     if (poolLimit <= array.length) {
-      const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+      const e = p.then((result) => {
+        const index = executing.indexOf(e);
+        if (index > -1) executing.splice(index, 1);
+        return result;
+      });
       executing.push(e);
       if (executing.length >= poolLimit) {
         await Promise.race(executing);

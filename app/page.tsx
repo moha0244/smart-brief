@@ -38,7 +38,10 @@ export default function Home() {
   }, [sessionToken, supabase]);
 
   useEffect(() => {
-    fetchDocumentCount();
+    const fetchCount = async () => {
+      await fetchDocumentCount();
+    };
+    fetchCount();
   }, [sessionToken, fetchDocumentCount]);
 
   const handleUploadSuccess = () => {

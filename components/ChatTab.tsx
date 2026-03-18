@@ -16,6 +16,7 @@ import {
   Conversation,
   ChunkWithSimilarity,
   Source,
+  DocumentChunk,
 } from "@/lib/types";
 
 export function ChatTab({ documentId }: ChatTabProps) {
@@ -225,7 +226,7 @@ export function ChatTab({ documentId }: ChatTabProps) {
   };
 
   const processChunks = (
-    allChunks: ChunkWithSimilarity[],
+    allChunks: DocumentChunk[],
     questionEmbedding: number[],
   ) => {
     return allChunks.map((chunk) => {

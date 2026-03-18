@@ -19,7 +19,7 @@ export function MessageList({ messages, loading }: MessageListProps) {
           className="flex justify-start"
         >
           <div className="bg-gray-100 p-3 rounded-lg">
-            <LoadingSpinner size="sm" color="gray" />
+            <LoadingSpinner size="sm" color="indigo" />
           </div>
         </motion.div>
       )}
