@@ -1,0 +1,47 @@
+{
+  "name": "smart-brief",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.41",
+    "@ai-sdk/react": "^3.0.118",
+    "@google/generative-ai": "^0.24.1",
+    "@langchain/community": "^1.1.23",
+    "@langchain/core": "^1.1.32",
+    "@langchain/openai": "^1.2.13",
+    "@langchain/textsplitters": "^1.0.1",
+    "@supabase/supabase-js": "^2.99.1",
+    "ai": "^6.0.116",
+    "canvas": "^3.2.1",
+    "framer-motion": "^12.36.0",
+    "langchain": "^1.2.31",
+    "next": "16.1.6",
+    "openai": "^4.28.0",
+    "pdf-parse": "^1.1.4",
+    "pdf-poppler": "^0.2.3",
+    "pdf2pic": "^3.2.0",
+    "pdfjs-dist": "^5.5.207",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-icons": "^5.6.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
