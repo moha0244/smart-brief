@@ -273,77 +273,88 @@ async function asyncPool<T, R>(
 }
 
 async function processDocumentWithGemini(docId: string, text: string) {
-  try {
-    console.log("Début traitement Gemini...");
-    const chunks = splitIntoChunks(text, 1000); 
-    console.log(`${chunks.length} chunks créés`);
+  const maxRetries = 2;
+  let retryCount = 0;
 
-    const embeddingModel = genAI.getGenerativeModel({
-      model: "gemini-embedding-001",
-    });
+  while (retryCount <= maxRetries) {
+    try {
+      console.log(`Début traitement Gemini (tentative ${retryCount + 1}/${maxRetries + 1})...`);
+      const chunks = splitIntoChunks(text, 1000); 
+      console.log(`${chunks.length} chunks créés`);
 
- 
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("Timeout après 30s")), 30000);
-    });
-
-
-    const results = await Promise.race([
-      asyncPool(3, chunks, async (chunk, index) => { 
-        console.log(`Génération embedding chunk ${index + 1}/${chunks.length}`);
-        
-        const embeddingPromise = embeddingModel.embedContent(chunk);
-        const timeoutChunk = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error(`Timeout chunk ${index + 1}`)), 10000);
-        });
-        
-        const result = await Promise.race([embeddingPromise, timeoutChunk]);
-        return { index, embedding: result.embedding.values, content: chunk };
-      }),
-      timeoutPromise
-    ]);
-
-    
-    await asyncPool(3, results, async ({ index, embedding, content }) => { 
-      console.log(`Tentative d'insertion chunk ${index + 1}/${chunks.length}`);
-      
-      const insertPromise = supabase
-        .from("document_chunks")
-        .insert({
-          document_id: docId,
-          content: content,
-          embedding: embedding,
-          chunk_index: index,
-        })
-        .select();
-
-      const timeoutInsert = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`Timeout insertion ${index + 1}`)), 5000);
+      const embeddingModel = genAI.getGenerativeModel({
+        model: "gemini-embedding-001",
       });
 
-      const { data, error } = await Promise.race([insertPromise, timeoutInsert]) as { data: unknown, error: unknown };
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Timeout après 45s")), 45000);
+      });
 
-      if (error) {
-        console.error(`Erreur insertion chunk ${index}:`, error);
-        throw new Error(`Insertion failed for chunk ${index}: ${(error as Error).message}`);
+      const results = await Promise.race([
+        asyncPool(2, chunks, async (chunk, index) => { 
+          console.log(`Génération embedding chunk ${index + 1}/${chunks.length}`);
+          
+          const embeddingPromise = embeddingModel.embedContent(chunk);
+          const timeoutChunk = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Timeout chunk ${index + 1}`)), 15000);
+          });
+          
+          const result = await Promise.race([embeddingPromise, timeoutChunk]);
+          return { index, embedding: result.embedding.values, content: chunk };
+        }),
+        timeoutPromise
+      ]);
+
+      await asyncPool(2, results, async ({ index, embedding, content }) => { 
+        console.log(`Tentative d'insertion chunk ${index + 1}/${chunks.length}`);
+        
+        const insertPromise = supabase
+          .from("document_chunks")
+          .insert({
+            document_id: docId,
+            content: content,
+            embedding: embedding,
+            chunk_index: index,
+          })
+          .select();
+
+        const timeoutInsert = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error(`Timeout insertion ${index + 1}`)), 10000);
+        });
+
+        const { data, error } = await Promise.race([insertPromise, timeoutInsert]) as { data: unknown, error: unknown };
+
+        if (error) {
+          console.error(`Erreur insertion chunk ${index}:`, error);
+          throw new Error(`Insertion failed for chunk ${index}: ${(error as Error).message}`);
+        }
+        console.log(`Chunk ${index + 1} inséré`);
+        return data;
+      });
+
+      await supabase
+        .from("documents")
+        .update({ status: "traite" })
+        .eq("id", docId);
+
+      console.log("Traitement terminé avec succès!");
+      return;
+      
+    } catch (error) {
+      console.error(`Erreur traitement Gemini (tentative ${retryCount + 1}):`, error);
+      retryCount++;
+      
+      if (retryCount <= maxRetries) {
+        console.log(`Nouvelle tentative dans ${retryCount * 2} secondes...`);
+        await new Promise(resolve => setTimeout(resolve, retryCount * 2000));
+      } else {
+        console.error("Échec après toutes les tentatives");
+        await supabase
+          .from("documents")
+          .update({ status: "erreur" })
+          .eq("id", docId);
       }
-      console.log(`Chunk ${index + 1} inséré`);
-      return data;
-    });
-
-    // Mettre à jour le statut du document
-    await supabase
-      .from("documents")
-      .update({ status: "traite" })
-      .eq("id", docId);
-
-    console.log("Traitement terminé avec succès!");
-  } catch (error) {
-    console.error("Erreur traitement Gemini:", error);
-    await supabase
-      .from("documents")
-      .update({ status: "erreur" })
-      .eq("id", docId);
+    }
   }
 }
 
