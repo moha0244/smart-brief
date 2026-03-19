@@ -5,11 +5,11 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { DocumentList } from "@/components/DocumentList";
 import { UploadButton } from "@/components/upload/UploadButton";
 import { SessionManager } from "@/components/SessionManager";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSearchParams } from "next/navigation";
 
-export default function Home() {
+function HomeContent() {
   const searchParams = useSearchParams();
   const sessionToken = searchParams.get("session");
 
@@ -86,5 +86,13 @@ export default function Home() {
         sessionToken={sessionToken}
       />
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="max-w-4xl mx-auto px-4 py-8">Chargement...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }
