@@ -49,8 +49,7 @@ export function FlashcardsTab({
       } else {
         setLoading(false);
       }
-    } catch (err) {
-      console.error("Erreur cache:", err);
+    } catch {
       setError("Erreur lors de la vérification du cache");
       setLoading(false);
     }
@@ -107,8 +106,7 @@ export function FlashcardsTab({
       });
 
       setFlashcards(newFlashcards);
-    } catch (err) {
-      console.error("Erreur génération:", err);
+    } catch {
       setError("Erreur lors de la génération");
     } finally {
       setGenerating(false);

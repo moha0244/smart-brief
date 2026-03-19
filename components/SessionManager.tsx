@@ -34,9 +34,7 @@ export function SessionManager() {
         .insert({ session_token: token });
 
       if (error) throw error;
-      console.log("✅ Session sauvegardée:", token);
-    } catch (error) {
-      console.error("❌ Erreur sauvegarde session:", error);
+    } catch {
     }
   };
 
@@ -51,8 +49,7 @@ export function SessionManager() {
 
       if (error) throw error;
       return !!data;
-    } catch (error) {
-      console.error("❌ Erreur validation session:", error);
+    } catch {
       return false;
     }
   };

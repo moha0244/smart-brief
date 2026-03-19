@@ -16,7 +16,6 @@ export function useDocuments(
 
   const fetchDocuments = useCallback(async () => {
     if (!sessionToken) {
-      console.log(" En attente du sessionToken...");
       return;
     }
 
@@ -36,13 +35,9 @@ export function useDocuments(
 
       if (error) throw error;
 
-      console.log(
-        ` ${data?.length || 0} documents pour session ${sessionToken.substring(0, 8)}...`,
-      );
       setDocuments(data || []);
       documentsRef.current = data || [];
-    } catch (error) {
-      console.error("Erreur chargement:", error);
+    } catch {
     }
   }, [sessionToken, filterStatus]);
 
@@ -59,12 +54,9 @@ export function useDocuments(
         .eq("status", "en cours");
 
       if (error) {
-        console.error("Erreur suppression des imports:", error);
       } else {
-        console.log("🗑️ Documents en cours supprimés suite au refresh");
       }
-    } catch (error) {
-      console.error("Erreur lors de la suppression:", error);
+    } catch {
     }
   }, [sessionToken]);
 
@@ -77,7 +69,6 @@ export function useDocuments(
       const existingUploadTime = sessionStorage.getItem('uploadStartTime');
       if (existingUploadTime) {
         sessionStorage.removeItem('uploadStartTime');
-        console.log(" Refresh détecté pendant upload - suppression des documents en cours");
         cancelProcessingDocuments();
       }
       
@@ -93,7 +84,6 @@ export function useDocuments(
       // Vérifier s'il y a des documents en cours de traitement
       const processingDocs = documentsRef.current.filter(doc => doc.status === "en cours");
       if (processingDocs.length > 0) {
-        console.log(` Polling: ${processingDocs.length} document(s) en cours de traitement...`);
         fetchDocuments();
       }
     }, 2000);

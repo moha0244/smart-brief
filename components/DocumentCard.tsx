@@ -52,8 +52,7 @@ export function DocumentCard({
       else router.refresh();
 
       setShowConfirm(false);
-    } catch (error) {
-      console.error("Erreur suppression:", error);
+    } catch {
     } finally {
       setIsDeleting(false);
     }

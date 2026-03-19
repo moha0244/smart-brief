@@ -15,10 +15,6 @@ async function extractTextWithOCR(
   file: File,
 ): Promise<{ text: string; pages: number }> {
   try {
-    console.log("Tentative d'extraction OCR avec Gemini Vision...");
-    console.log(
-      `Fichier: ${file.name}, Taille: ${(file.size / 1024 / 1024).toFixed(2)}MB`,
-    );
 
     const maxSize = 20 * 1024 * 1024;
     if (file.size > maxSize) {
@@ -30,8 +26,6 @@ async function extractTextWithOCR(
     const bytes = await file.arrayBuffer();
     const base64 = Buffer.from(bytes).toString("base64");
 
-    console.log(`Base64 généré: ${base64.length} caractères`);
-
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       generationConfig: {
@@ -42,7 +36,6 @@ async function extractTextWithOCR(
 
     const prompt = PROMPTS.OCR;
 
-    console.log("Envoi à Gemini Vision...");
     const result = await model.generateContent([
       prompt,
       {
@@ -54,7 +47,6 @@ async function extractTextWithOCR(
     ]);
 
     const text = result.response.text();
-    console.log(`Réponse Gemini: ${text.length} caractères`);
 
     if (!text || text.trim().length === 0) {
       throw new Error("Gemini n'a trouvé aucun texte dans le document");
@@ -62,16 +54,9 @@ async function extractTextWithOCR(
 
     const pages = Math.max(1, (text.match(/Page \d+:/g) || []).length);
 
-    console.log(`OCR réussi: ${text.length} caractères sur ${pages} pages`);
     return { text, pages };
   } catch (error: unknown) {
     const apiError = error as ApiError;
-    console.error("Erreur OCR détaillée:", {
-      message: apiError.message,
-      status: apiError.status,
-      statusText: apiError.statusText,
-      name: apiError.name,
-    });
 
     if (apiError.message?.includes("File size")) {
       throw new Error("Le fichier est trop volumineux pour l'OCR (max 20MB)");
@@ -126,48 +111,36 @@ export async function uploadDocument(formData: FormData) {
     let extractionMessage = "";
 
     try {
-      console.log("Extraction PDF avec pdf-parse...");
       const pdfData = await pdf(buffer);
       numPages = pdfData.numpages;
       fullText = pdfData.text;
 
       const textLength = fullText.trim().length;
-      console.log(
-        `Texte extrait: ${textLength} caractères sur ${numPages} pages`,
-      );
 
       if (textLength < 100) {
-        console.log("Texte insuffisant, tentative d'OCR...");
         try {
           const ocrResult = await extractTextWithOCR(file);
           fullText = ocrResult.text;
           numPages = ocrResult.pages;
           extractionSuccess = true;
           extractionMessage = "Texte extrait avec OCR (Gemini Vision)";
-          console.log("OCR réussi");
-        } catch (ocrError) {
-          console.error("OCR échoué:", ocrError);
+        } catch {
           extractionSuccess = false;
           extractionMessage =
             "Le PDF semble être scanné et l'OCR a échoué. Essayez avec un PDF contenant du texte.";
         }
       } else {
-        console.log("Extraction PDF réussie");
         extractionMessage = "Texte extrait avec pdf-parse";
       }
-    } catch (pdfError) {
-      console.error("Erreur lecture PDF:", pdfError);
+    } catch {
 
       try {
-        console.log("pdf-parse échoué, tentative d'OCR...");
         const ocrResult = await extractTextWithOCR(file);
         fullText = ocrResult.text;
         numPages = ocrResult.pages;
         extractionSuccess = true;
         extractionMessage = "Texte extrait avec OCR (pdf-parse échoué)";
-        console.log("OCR réussi en fallback");
-      } catch (ocrError) {
-        console.error("OCR fallback échoué:", ocrError);
+      } catch {
         extractionSuccess = false;
         extractionMessage =
           "Impossible de lire le contenu du PDF. Le fichier est peut-être corrompu ou non supporté.";
@@ -200,26 +173,23 @@ export async function uploadDocument(formData: FormData) {
       .single();
 
     if (dbError) throw dbError;
+    if (!doc) throw new Error("Failed to create document record");
 
     if (extractionSuccess && fullText && fullText.length > 100) {
-      console.log("Lancement du traitement Gemini...");
 
       after(async () => {
         try {
           await processDocumentWithGemini(doc.id, fullText);
-        } catch (error) {
-          console.error("Erreur traitement Gemini:", error);
+        } catch {
 
           await supabase
             .from("documents")
             .update({ status: "erreur" })
             .eq("id", doc.id);
 
-          console.log("Statut mis à jour: erreur");
         }
       });
     } else {
-      console.log("Traitement Gemini ignoré - extraction échouée");
     }
 
     return {
@@ -230,7 +200,6 @@ export async function uploadDocument(formData: FormData) {
       pages: numPages,
     };
   } catch (error) {
-    console.error("Erreur globale:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Erreur inconnue",
@@ -271,18 +240,13 @@ async function processDocumentWithGemini(docId: string, text: string) {
 
   while (retryCount <= maxRetries) {
     try {
-      console.log(
-        `Début traitement Gemini (tentative ${retryCount + 1}/${maxRetries + 1})...`,
-      );
 
       const chunks = splitIntoChunks(text, 1000);
-      console.log(`${chunks.length} chunks créés`);
 
       const embeddingModel = genAI.getGenerativeModel({
         model: "gemini-embedding-001",
       });
 
-      console.log("Début génération des embeddings...");
       const results: Array<{
         index: number;
         embedding: number[];
@@ -290,10 +254,8 @@ async function processDocumentWithGemini(docId: string, text: string) {
       }> = [];
 
       for (let i = 0; i < chunks.length; i++) {
-        console.log(`Génération embedding chunk ${i + 1}/${chunks.length}`);
 
         try {
-          console.log(`Appel API Gemini pour chunk ${i + 1}...`);
 
           const embeddingPromise = embeddingModel.embedContent(chunks[i]);
           const timeoutChunk = new Promise<never>((_, reject) => {
@@ -305,27 +267,18 @@ async function processDocumentWithGemini(docId: string, text: string) {
 
           const result = await Promise.race([embeddingPromise, timeoutChunk]);
 
-          console.log(`API Gemini a répondu pour chunk ${i + 1}`);
-
           results.push({
             index: i,
             embedding: result.embedding.values,
             content: chunks[i],
           });
 
-          console.log(
-            `Embedding chunk ${i + 1} généré (${result.embedding.values.length} dimensions)`,
-          );
-        } catch (error) {
-          console.error(`Erreur embedding chunk ${i + 1}:`, error);
-          throw error;
+        } catch {
+          throw new Error("Embedding generation failed");
         }
       }
 
-      console.log("Tous les embeddings générés, début insertion...");
-
       await asyncPool(2, results, async ({ index, embedding, content }) => {
-        console.log(`Tentative d'insertion chunk ${index + 1}/${chunks.length}`);
 
         const insertPromise = supabase
           .from("document_chunks")
@@ -350,13 +303,11 @@ async function processDocumentWithGemini(docId: string, text: string) {
         ])) as { data: unknown; error: unknown };
 
         if (error) {
-          console.error(`Erreur insertion chunk ${index}:`, error);
           throw new Error(
             `Insertion failed for chunk ${index}: ${(error as Error).message}`,
           );
         }
 
-        console.log(`Chunk ${index + 1} inséré`);
         return data;
       });
 
@@ -365,22 +316,15 @@ async function processDocumentWithGemini(docId: string, text: string) {
         .update({ status: "traite" })
         .eq("id", docId);
 
-      console.log("Traitement terminé avec succès!");
       return;
-    } catch (error) {
-      console.error(
-        `Erreur traitement Gemini (tentative ${retryCount + 1}):`,
-        error,
-      );
+    } catch {
       retryCount++;
 
       if (retryCount <= maxRetries) {
-        console.log(`Nouvelle tentative dans ${retryCount * 2} secondes...`);
         await new Promise((resolve) =>
           setTimeout(resolve, retryCount * 2000),
         );
       } else {
-        console.error("Échec après toutes les tentatives");
         await supabase
           .from("documents")
           .update({ status: "erreur" })

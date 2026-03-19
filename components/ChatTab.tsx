@@ -130,7 +130,6 @@ export function ChatTab({ documentId }: ChatTabProps) {
         ]);
       }
     } catch (error) {
-      console.error("Erreur chargement messages:", error);
     }
   };
 
@@ -167,7 +166,6 @@ export function ChatTab({ documentId }: ChatTabProps) {
         }
       }
     } catch (error) {
-      console.error("Erreur suppression:", error);
     } finally {
       setShowDeleteConfirm(false);
       setConversationToDelete(null);
@@ -187,7 +185,6 @@ export function ChatTab({ documentId }: ChatTabProps) {
         // Format: "-0.001,-0.002,..."
         return emb.split(",").map(Number);
       } catch (e) {
-        console.error("❌ Erreur parsing string:", emb.substring(0, 50));
         return [];
       }
     }
@@ -197,7 +194,6 @@ export function ChatTab({ documentId }: ChatTabProps) {
       return Object.values(emb);
     }
 
-    console.error("❌ Format non supporté:", typeof emb);
     return [];
   };
 
@@ -234,7 +230,6 @@ export function ChatTab({ documentId }: ChatTabProps) {
       const chunkEmbedding = parseEmbedding(chunk.embedding);
 
       if (chunkEmbedding.length === 0) {
-        console.log(`⚠️ Embedding vide pour chunk ${chunk.chunk_index}`);
         return {
           ...chunk,
           embedding: [], // Ensure it's number[]
@@ -264,7 +259,6 @@ export function ChatTab({ documentId }: ChatTabProps) {
         model: "gemini-embedding-001",
       });
 
-      console.log(" Recherche pour:", question);
       const result = await embeddingModel.embedContent(question);
       const questionEmbedding = result.embedding.values;
 
@@ -275,11 +269,9 @@ export function ChatTab({ documentId }: ChatTabProps) {
 
       if (error) throw error;
       if (!allChunks || allChunks.length === 0) {
-        console.log("Aucun chunk trouvé");
         return { chunks: [] };
       }
 
-      console.log(` ${allChunks.length} chunks trouvés`);
 
       const chunksWithSimilarity = processChunks(allChunks, questionEmbedding);
 
@@ -289,7 +281,6 @@ export function ChatTab({ documentId }: ChatTabProps) {
       );
 
       if (validChunks.length === 0) {
-        console.log("⚠️ Aucun chunk avec similarité valide");
         return { chunks: [] };
       }
 
@@ -298,21 +289,12 @@ export function ChatTab({ documentId }: ChatTabProps) {
         (a, b) => b.similarity - a.similarity,
       );
 
-      console.log(
-        "📊 Top similarités:",
-        sortedChunks.slice(0, 5).map((c) => ({
-          chunk: c.chunk_index,
-          sim: c.similarity.toFixed(4),
-          preview: c.content.substring(0, 50) + "...",
-        })),
-      );
 
       // Prendre les 5 meilleurs chunks
       const topChunks = sortedChunks.slice(0, 5);
 
       return { chunks: topChunks };
     } catch (error) {
-      console.error("❌ Erreur findRelevantChunks:", error);
       return { chunks: [] };
     }
   };
@@ -339,7 +321,6 @@ export function ChatTab({ documentId }: ChatTabProps) {
       // Arrondir pour éviter les problèmes de précision
       return Number(Math.min(1, Math.max(0, similarity)).toFixed(4));
     } catch (error) {
-      console.error("Erreur calcul similarité:", error);
       return 0;
     }
   }
@@ -361,9 +342,6 @@ export function ChatTab({ documentId }: ChatTabProps) {
         similarity: c.similarity,
       }));
 
-      console.log(
-        ` Contexte: ${chunks.length} chunks, similarité moyenne: ${((chunks.reduce((acc, c) => acc + c.similarity, 0) / chunks.length) * 100).toFixed(1)}%`,
-      );
 
       return { context, sourcesList };
     }
@@ -375,7 +353,6 @@ export function ChatTab({ documentId }: ChatTabProps) {
       .single();
 
     if (doc?.full_text) {
-      console.log(" Fallback sur document complet");
       return {
         context: doc.full_text,
         sourcesList: [
@@ -477,7 +454,6 @@ export function ChatTab({ documentId }: ChatTabProps) {
         },
       ]);
     } catch (error) {
-      console.error("Erreur chat:", error);
       setMessages((prev) => [
         ...prev,
         {

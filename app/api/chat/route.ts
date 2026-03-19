@@ -8,12 +8,6 @@ export async function POST(req: Request) {
     // Récupérer les données de la requête
     const { message, context, conversationId, documentId } = await req.json();
 
-    console.log("API route appelée avec:", {
-      message: message?.substring(0, 50),
-      contextLength: context?.length,
-      conversationId,
-      documentId,
-    });
 
     if (!message) {
       return NextResponse.json({ error: "Message requis" }, { status: 400 });
@@ -36,7 +30,6 @@ export async function POST(req: Request) {
     const response = await result.response;
     const text = response.text();
 
-    console.log("✅ Réponse générée, longueur:", text.length);
 
     // Retourner la réponse en JSON
     return NextResponse.json({
@@ -44,7 +37,6 @@ export async function POST(req: Request) {
       success: true,
     });
   } catch (error) {
-    console.error("❌ Erreur API route:", error);
 
     // En cas d'erreur, retourner un message d'erreur
     return NextResponse.json(
