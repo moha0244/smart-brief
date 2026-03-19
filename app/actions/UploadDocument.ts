@@ -86,7 +86,9 @@ async function extractTextWithOCR(
     } else if (apiError.message?.includes("text")) {
       throw new Error("Aucun texte détecté dans le document scanné");
     } else {
-      throw new Error(`Échec de l'OCR: ${apiError.message || "Erreur inconnue"}`);
+      throw new Error(
+        `Échec de l'OCR: ${apiError.message || "Erreur inconnue"}`,
+      );
     }
   }
 }
@@ -106,7 +108,10 @@ export async function uploadDocument(formData: FormData) {
 
   // Vérifier si la page a été rafraîchie pendant l'upload
   if (!uploadStartTime) {
-    return { success: false, error: "Session d'upload expirée (refresh détecté)" };
+    return {
+      success: false,
+      error: "Session d'upload expirée (refresh détecté)",
+    };
   }
 
   try {
@@ -128,7 +133,7 @@ export async function uploadDocument(formData: FormData) {
     let extractionMessage = "";
 
     try {
-      console.log("📄 Tentative d'extraction avec pdf-parse...");
+      console.log("Extraction PDF avec pdf-parse...");
       const pdfData = await pdf(buffer);
       numPages = pdfData.numpages;
       fullText = pdfData.text;
@@ -136,43 +141,43 @@ export async function uploadDocument(formData: FormData) {
       // Vérifier si le texte extrait est significatif
       const textLength = fullText.trim().length;
       console.log(
-        `📊 Texte extrait: ${textLength} caractères sur ${numPages} pages`,
+        `Texte extrait: ${textLength} caractères sur ${numPages} pages`,
       );
 
       // Si le texte est trop court, essayer l'OCR
       if (textLength < 100) {
-        console.log("⚠️ Texte insuffisant, tentative d'OCR...");
+        console.log("Texte insuffisant, tentative d'OCR...");
         try {
           const ocrResult = await extractTextWithOCR(file);
           fullText = ocrResult.text;
           numPages = ocrResult.pages;
           extractionSuccess = true;
           extractionMessage = "Texte extrait avec OCR (Gemini Vision)";
-          console.log("✅ OCR réussi");
+          console.log("OCR réussi");
         } catch (ocrError) {
-          console.error("❌ OCR échoué:", ocrError);
+          console.error("OCR échoué:", ocrError);
           extractionSuccess = false;
           extractionMessage =
             "Le PDF semble être scanné et l'OCR a échoué. Essayez avec un PDF contenant du texte.";
         }
       } else {
-        console.log("✅ Extraction PDF réussie");
+        console.log("Extraction PDF réussie");
         extractionMessage = "Texte extrait avec pdf-parse";
       }
     } catch (pdfError) {
-      console.error("❌ Erreur lecture PDF:", pdfError);
+      console.error("Erreur lecture PDF:", pdfError);
 
       // Si pdf-parse échoue complètement, essayer l'OCR
       try {
-        console.log("📄 pdf-parse échoué, tentative d'OCR...");
+        console.log("pdf-parse échoué, tentative d'OCR...");
         const ocrResult = await extractTextWithOCR(file);
         fullText = ocrResult.text;
         numPages = ocrResult.pages;
         extractionSuccess = true;
         extractionMessage = "Texte extrait avec OCR (pdf-parse échoué)";
-        console.log("✅ OCR réussi en fallback");
+        console.log("OCR réussi en fallback");
       } catch (ocrError) {
-        console.error("❌ OCR fallback échoué:", ocrError);
+        console.error("OCR fallback échoué:", ocrError);
         extractionSuccess = false;
         extractionMessage =
           "Impossible de lire le contenu du PDF. Le fichier est peut-être corrompu ou non supporté.";
@@ -221,7 +226,7 @@ export async function uploadDocument(formData: FormData) {
           .then(() => console.log(" Statut mis à jour: erreur"));
       });
     } else {
-      console.log("⏸️ Traitement Gemini ignoré - extraction échouée");
+      console.log("⏸ Traitement Gemini ignoré - extraction échouée");
     }
 
     return {

@@ -8,6 +8,8 @@ import {
   FiX,
   FiFileText,
   FiClock,
+  FiFile,
+  FiTool,
 } from "react-icons/fi";
 import { UploadPopupDetails } from "@/lib/types/components";
 
@@ -141,7 +143,7 @@ export function UploadPopup({
                     )}
                     {details.pages && (
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="text-gray-400">📄</span>
+                        <FiFile className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                           {details.pages} pages
                         </span>
@@ -149,7 +151,7 @@ export function UploadPopup({
                     )}
                     {details.extractionMethod && (
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="text-gray-400">🔧</span>
+                        <FiTool className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                           {details.extractionMethod}
                         </span>
