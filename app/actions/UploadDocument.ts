@@ -1,6 +1,6 @@
-// app/actions/uploadDocument.ts
 "use server";
 
+import { after } from "next/server";
 import { supabase } from "@/lib/supabase-admin";
 import { ApiError } from "@/lib/types/common";
 import { PROMPTS } from "@/lib/prompts";
@@ -15,26 +15,23 @@ async function extractTextWithOCR(
   file: File,
 ): Promise<{ text: string; pages: number }> {
   try {
-    console.log(" Tentative d'extraction OCR avec Gemini Vision...");
+    console.log("Tentative d'extraction OCR avec Gemini Vision...");
     console.log(
-      ` Fichier: ${file.name}, Taille: ${(file.size / 1024 / 1024).toFixed(2)}MB`,
+      `Fichier: ${file.name}, Taille: ${(file.size / 1024 / 1024).toFixed(2)}MB`,
     );
 
-    // Vérifier la taille du fichier
-    const maxSize = 20 * 1024 * 1024; // 20MB
+    const maxSize = 20 * 1024 * 1024;
     if (file.size > maxSize) {
       throw new Error(
         `Fichier trop volumineux pour l'OCR (${(file.size / 1024 / 1024).toFixed(2)}MB > 20MB max)`,
       );
     }
 
-    // Convertir le fichier en base64
     const bytes = await file.arrayBuffer();
     const base64 = Buffer.from(bytes).toString("base64");
 
     console.log(`Base64 généré: ${base64.length} caractères`);
 
-    // Utiliser Gemini Vision pour extraire le texte
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       generationConfig: {
@@ -45,7 +42,7 @@ async function extractTextWithOCR(
 
     const prompt = PROMPTS.OCR;
 
-    console.log("🤖 Envoi à Gemini Vision...");
+    console.log("Envoi à Gemini Vision...");
     const result = await model.generateContent([
       prompt,
       {
@@ -57,7 +54,7 @@ async function extractTextWithOCR(
     ]);
 
     const text = result.response.text();
-    console.log(` Réponse Gemini: ${text.length} caractères`);
+    console.log(`Réponse Gemini: ${text.length} caractères`);
 
     if (!text || text.trim().length === 0) {
       throw new Error("Gemini n'a trouvé aucun texte dans le document");
@@ -65,18 +62,17 @@ async function extractTextWithOCR(
 
     const pages = Math.max(1, (text.match(/Page \d+:/g) || []).length);
 
-    console.log(`✅ OCR réussi: ${text.length} caractères sur ${pages} pages`);
+    console.log(`OCR réussi: ${text.length} caractères sur ${pages} pages`);
     return { text, pages };
   } catch (error: unknown) {
     const apiError = error as ApiError;
-    console.error("❌ Erreur OCR détaillée:", {
+    console.error("Erreur OCR détaillée:", {
       message: apiError.message,
       status: apiError.status,
       statusText: apiError.statusText,
       name: apiError.name,
     });
 
-    // Messages d'erreur spécifiques
     if (apiError.message?.includes("File size")) {
       throw new Error("Le fichier est trop volumineux pour l'OCR (max 20MB)");
     } else if (apiError.message?.includes("quota")) {
@@ -106,7 +102,6 @@ export async function uploadDocument(formData: FormData) {
     return { success: false, error: "Session invalide" };
   }
 
-  // Vérifier si la page a été rafraîchie pendant l'upload
   if (!uploadStartTime) {
     return {
       success: false,
@@ -115,7 +110,6 @@ export async function uploadDocument(formData: FormData) {
   }
 
   try {
-    //  Upload du fichier
     const fileName = `${Date.now()}_${encodeURIComponent(file.name)}`;
     const { error: uploadError } = await supabase.storage
       .from("documents")
@@ -123,7 +117,6 @@ export async function uploadDocument(formData: FormData) {
 
     if (uploadError) throw uploadError;
 
-    // Lire le PDF avec pdf-parse uniquement
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
@@ -138,13 +131,11 @@ export async function uploadDocument(formData: FormData) {
       numPages = pdfData.numpages;
       fullText = pdfData.text;
 
-      // Vérifier si le texte extrait est significatif
       const textLength = fullText.trim().length;
       console.log(
         `Texte extrait: ${textLength} caractères sur ${numPages} pages`,
       );
 
-      // Si le texte est trop court, essayer l'OCR
       if (textLength < 100) {
         console.log("Texte insuffisant, tentative d'OCR...");
         try {
@@ -167,7 +158,6 @@ export async function uploadDocument(formData: FormData) {
     } catch (pdfError) {
       console.error("Erreur lecture PDF:", pdfError);
 
-      // Si pdf-parse échoue complètement, essayer l'OCR
       try {
         console.log("pdf-parse échoué, tentative d'OCR...");
         const ocrResult = await extractTextWithOCR(file);
@@ -186,7 +176,6 @@ export async function uploadDocument(formData: FormData) {
       }
     }
 
-    //  Créer l'entrée dans documents
     const { data: doc, error: dbError } = await supabase
       .from("documents")
       .insert({
@@ -212,21 +201,25 @@ export async function uploadDocument(formData: FormData) {
 
     if (dbError) throw dbError;
 
-    
     if (extractionSuccess && fullText && fullText.length > 100) {
-      console.log("🤖 Lancement du traitement Gemini...");
+      console.log("Lancement du traitement Gemini...");
 
-      processDocumentWithGemini(doc.id, fullText).catch((error) => {
-        console.error(" Erreur traitement Gemini:", error);
-        
-        supabase
-          .from("documents")
-          .update({ status: "erreur" })
-          .eq("id", doc.id)
-          .then(() => console.log(" Statut mis à jour: erreur"));
+      after(async () => {
+        try {
+          await processDocumentWithGemini(doc.id, fullText);
+        } catch (error) {
+          console.error("Erreur traitement Gemini:", error);
+
+          await supabase
+            .from("documents")
+            .update({ status: "erreur" })
+            .eq("id", doc.id);
+
+          console.log("Statut mis à jour: erreur");
+        }
       });
     } else {
-      console.log("⏸ Traitement Gemini ignoré - extraction échouée");
+      console.log("Traitement Gemini ignoré - extraction échouée");
     }
 
     return {
@@ -237,7 +230,7 @@ export async function uploadDocument(formData: FormData) {
       pages: numPages,
     };
   } catch (error) {
-    console.error(" Erreur globale:", error);
+    console.error("Erreur globale:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Erreur inconnue",
@@ -245,30 +238,30 @@ export async function uploadDocument(formData: FormData) {
   }
 }
 
-
 async function asyncPool<T, R>(
   poolLimit: number,
   array: T[],
-  iteratorFn: (item: T, index: number) => Promise<R>,
+  iteratorFn: (item: T, index: number) => Promise<R> | R,
 ): Promise<R[]> {
   const ret: Promise<R>[] = [];
-  const executing: Promise<R>[] = [];
+  const executing: Promise<void>[] = [];
+
   for (const [index, item] of array.entries()) {
-    const p = iteratorFn(item, index);
+    const p = Promise.resolve().then(() => iteratorFn(item, index));
     ret.push(p);
 
-    if (poolLimit <= array.length) {
-      const e = p.then((result) => {
-        const index = executing.indexOf(e);
-        if (index > -1) executing.splice(index, 1);
-        return result;
-      });
-      executing.push(e);
-      if (executing.length >= poolLimit) {
-        await Promise.race(executing);
-      }
+    const e: Promise<void> = p.then(() => {
+      const i = executing.indexOf(e);
+      if (i > -1) executing.splice(i, 1);
+    });
+
+    executing.push(e);
+
+    if (executing.length >= poolLimit) {
+      await Promise.race(executing);
     }
   }
+
   return Promise.all(ret);
 }
 
@@ -278,8 +271,11 @@ async function processDocumentWithGemini(docId: string, text: string) {
 
   while (retryCount <= maxRetries) {
     try {
-      console.log(`Début traitement Gemini (tentative ${retryCount + 1}/${maxRetries + 1})...`);
-      const chunks = splitIntoChunks(text, 1000); 
+      console.log(
+        `Début traitement Gemini (tentative ${retryCount + 1}/${maxRetries + 1})...`,
+      );
+
+      const chunks = splitIntoChunks(text, 1000);
       console.log(`${chunks.length} chunks créés`);
 
       const embeddingModel = genAI.getGenerativeModel({
@@ -287,52 +283,79 @@ async function processDocumentWithGemini(docId: string, text: string) {
       });
 
       console.log("Début génération des embeddings...");
-      const results = [];
-      
-      // Générer les embeddings séquentiellement pour éviter les blocages
+      const results: Array<{
+        index: number;
+        embedding: number[];
+        content: string;
+      }> = [];
+
       for (let i = 0; i < chunks.length; i++) {
         console.log(`Génération embedding chunk ${i + 1}/${chunks.length}`);
-        
+
         try {
+          console.log(`Appel API Gemini pour chunk ${i + 1}...`);
+
           const embeddingPromise = embeddingModel.embedContent(chunks[i]);
           const timeoutChunk = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error(`Timeout chunk ${i + 1}`)), 15000);
+            setTimeout(
+              () => reject(new Error(`Timeout chunk ${i + 1} après 30s`)),
+              30000,
+            );
           });
-          
+
           const result = await Promise.race([embeddingPromise, timeoutChunk]);
-          results.push({ index: i, embedding: result.embedding.values, content: chunks[i] });
-          console.log(`Embedding chunk ${i + 1} généré`);
+
+          console.log(`API Gemini a répondu pour chunk ${i + 1}`);
+
+          results.push({
+            index: i,
+            embedding: result.embedding.values,
+            content: chunks[i],
+          });
+
+          console.log(
+            `Embedding chunk ${i + 1} généré (${result.embedding.values.length} dimensions)`,
+          );
         } catch (error) {
           console.error(`Erreur embedding chunk ${i + 1}:`, error);
           throw error;
         }
       }
-      
+
       console.log("Tous les embeddings générés, début insertion...");
 
-      await asyncPool(2, results, async ({ index, embedding, content }) => { 
+      await asyncPool(2, results, async ({ index, embedding, content }) => {
         console.log(`Tentative d'insertion chunk ${index + 1}/${chunks.length}`);
-        
+
         const insertPromise = supabase
           .from("document_chunks")
           .insert({
             document_id: docId,
-            content: content,
-            embedding: embedding,
+            content,
+            embedding,
             chunk_index: index,
           })
           .select();
 
         const timeoutInsert = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error(`Timeout insertion ${index + 1}`)), 10000);
+          setTimeout(
+            () => reject(new Error(`Timeout insertion ${index + 1}`)),
+            10000,
+          );
         });
 
-        const { data, error } = await Promise.race([insertPromise, timeoutInsert]) as { data: unknown, error: unknown };
+        const { data, error } = (await Promise.race([
+          insertPromise,
+          timeoutInsert,
+        ])) as { data: unknown; error: unknown };
 
         if (error) {
           console.error(`Erreur insertion chunk ${index}:`, error);
-          throw new Error(`Insertion failed for chunk ${index}: ${(error as Error).message}`);
+          throw new Error(
+            `Insertion failed for chunk ${index}: ${(error as Error).message}`,
+          );
         }
+
         console.log(`Chunk ${index + 1} inséré`);
         return data;
       });
@@ -344,14 +367,18 @@ async function processDocumentWithGemini(docId: string, text: string) {
 
       console.log("Traitement terminé avec succès!");
       return;
-      
     } catch (error) {
-      console.error(`Erreur traitement Gemini (tentative ${retryCount + 1}):`, error);
+      console.error(
+        `Erreur traitement Gemini (tentative ${retryCount + 1}):`,
+        error,
+      );
       retryCount++;
-      
+
       if (retryCount <= maxRetries) {
         console.log(`Nouvelle tentative dans ${retryCount * 2} secondes...`);
-        await new Promise(resolve => setTimeout(resolve, retryCount * 2000));
+        await new Promise((resolve) =>
+          setTimeout(resolve, retryCount * 2000),
+        );
       } else {
         console.error("Échec après toutes les tentatives");
         await supabase
@@ -364,7 +391,7 @@ async function processDocumentWithGemini(docId: string, text: string) {
 }
 
 function splitIntoChunks(text: string, size: number): string[] {
-  const chunks = [];
+  const chunks: string[] = [];
   for (let i = 0; i < text.length; i += size) {
     chunks.push(text.substring(i, i + size));
   }
