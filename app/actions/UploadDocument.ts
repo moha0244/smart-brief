@@ -212,13 +212,13 @@ export async function uploadDocument(formData: FormData) {
 
     if (dbError) throw dbError;
 
-    // Lancer le traitement Gemini seulement si l'extraction a réussi
+    
     if (extractionSuccess && fullText && fullText.length > 100) {
       console.log("🤖 Lancement du traitement Gemini...");
 
       processDocumentWithGemini(doc.id, fullText).catch((error) => {
-        console.error("❌ Erreur traitement Gemini:", error);
-        // Mettre à jour le statut en erreur si le traitement échoue
+        console.error(" Erreur traitement Gemini:", error);
+        
         supabase
           .from("documents")
           .update({ status: "erreur" })
@@ -245,7 +245,7 @@ export async function uploadDocument(formData: FormData) {
   }
 }
 
-// Fonction utilitaire pour limiter la concurrence (file d'attente)
+
 async function asyncPool<T, R>(
   poolLimit: number,
   array: T[],
@@ -275,24 +275,39 @@ async function asyncPool<T, R>(
 async function processDocumentWithGemini(docId: string, text: string) {
   try {
     console.log("Début traitement Gemini...");
-    const chunks = splitIntoChunks(text, 2000);
+    const chunks = splitIntoChunks(text, 1000); 
     console.log(`${chunks.length} chunks créés`);
 
     const embeddingModel = genAI.getGenerativeModel({
       model: "gemini-embedding-001",
     });
 
-    //  On exécute les promesses de génération d'embedding avec une limite de concurrence
-    const results = await asyncPool(2, chunks, async (chunk, index) => {
-      console.log(`Génération embedding chunk ${index + 1}/${chunks.length}`);
-      const result = await embeddingModel.embedContent(chunk);
-      return { index, embedding: result.embedding.values, content: chunk };
+ 
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("Timeout après 30s")), 30000);
     });
 
-    // On exécute les insertions avec la même limite de concurrence
-    await asyncPool(2, results, async ({ index, embedding, content }) => {
+
+    const results = await Promise.race([
+      asyncPool(3, chunks, async (chunk, index) => { 
+        console.log(`Génération embedding chunk ${index + 1}/${chunks.length}`);
+        
+        const embeddingPromise = embeddingModel.embedContent(chunk);
+        const timeoutChunk = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error(`Timeout chunk ${index + 1}`)), 10000);
+        });
+        
+        const result = await Promise.race([embeddingPromise, timeoutChunk]);
+        return { index, embedding: result.embedding.values, content: chunk };
+      }),
+      timeoutPromise
+    ]);
+
+    
+    await asyncPool(3, results, async ({ index, embedding, content }) => { 
       console.log(`Tentative d'insertion chunk ${index + 1}/${chunks.length}`);
-      const { data, error } = await supabase
+      
+      const insertPromise = supabase
         .from("document_chunks")
         .insert({
           document_id: docId,
@@ -302,14 +317,17 @@ async function processDocumentWithGemini(docId: string, text: string) {
         })
         .select();
 
-      if (error) {
-        console.error(`❌ Erreur insertion chunk ${index}:`, error);
+      const timeoutInsert = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Timeout insertion ${index + 1}`)), 5000);
+      });
 
-        throw new Error(
-          `Insertion failed for chunk ${index}: ${error.message}`,
-        );
+      const { data, error } = await Promise.race([insertPromise, timeoutInsert]) as { data: unknown, error: unknown };
+
+      if (error) {
+        console.error(`Erreur insertion chunk ${index}:`, error);
+        throw new Error(`Insertion failed for chunk ${index}: ${(error as Error).message}`);
       }
-      console.log(`✅ Chunk ${index + 1} inséré`);
+      console.log(`Chunk ${index + 1} inséré`);
       return data;
     });
 
@@ -319,9 +337,9 @@ async function processDocumentWithGemini(docId: string, text: string) {
       .update({ status: "traite" })
       .eq("id", docId);
 
-    console.log(" Traitement terminé avec succès!");
+    console.log("Traitement terminé avec succès!");
   } catch (error) {
-    console.error(" Erreur traitement Gemini:", error);
+    console.error("Erreur traitement Gemini:", error);
     await supabase
       .from("documents")
       .update({ status: "erreur" })
