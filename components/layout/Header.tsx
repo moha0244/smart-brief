@@ -2,7 +2,7 @@
 "use client";
 
 import { SearchInput } from "@/components/ui/SearchInput";
-import { Button } from "@/components/ui/Button";
+import { UploadButton } from "@/components/upload/UploadButton";
 
 interface HeaderProps {
   onUploadSuccess: () => void;
@@ -27,9 +27,7 @@ export function Header({
             bibliothèque
           </p>
         </div>
-        <Button onUploadSuccess={onUploadSuccess} variant="primary">
-          Nouveau document
-        </Button>
+        <UploadButton onUploadSuccess={onUploadSuccess} />
       </div>
 
       <SearchInput
