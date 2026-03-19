@@ -286,24 +286,29 @@ async function processDocumentWithGemini(docId: string, text: string) {
         model: "gemini-embedding-001",
       });
 
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Timeout après 45s")), 45000);
-      });
-
-      const results = await Promise.race([
-        asyncPool(2, chunks, async (chunk, index) => { 
-          console.log(`Génération embedding chunk ${index + 1}/${chunks.length}`);
-          
-          const embeddingPromise = embeddingModel.embedContent(chunk);
+      console.log("Début génération des embeddings...");
+      const results = [];
+      
+      // Générer les embeddings séquentiellement pour éviter les blocages
+      for (let i = 0; i < chunks.length; i++) {
+        console.log(`Génération embedding chunk ${i + 1}/${chunks.length}`);
+        
+        try {
+          const embeddingPromise = embeddingModel.embedContent(chunks[i]);
           const timeoutChunk = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error(`Timeout chunk ${index + 1}`)), 15000);
+            setTimeout(() => reject(new Error(`Timeout chunk ${i + 1}`)), 15000);
           });
           
           const result = await Promise.race([embeddingPromise, timeoutChunk]);
-          return { index, embedding: result.embedding.values, content: chunk };
-        }),
-        timeoutPromise
-      ]);
+          results.push({ index: i, embedding: result.embedding.values, content: chunks[i] });
+          console.log(`Embedding chunk ${i + 1} généré`);
+        } catch (error) {
+          console.error(`Erreur embedding chunk ${i + 1}:`, error);
+          throw error;
+        }
+      }
+      
+      console.log("Tous les embeddings générés, début insertion...");
 
       await asyncPool(2, results, async ({ index, embedding, content }) => { 
         console.log(`Tentative d'insertion chunk ${index + 1}/${chunks.length}`);
