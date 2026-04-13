@@ -69,7 +69,7 @@ export function ResumeTab({ documentId, documentContent }: ResumeTabProps) {
         process.env.NEXT_PUBLIC_GEMINI_API_KEY!,
       );
       const model = genAI.getGenerativeModel({
-        model: "gemini-3.1-flash-lite-preview",
+        model: "gemini-2.5-flash",
       });
 
       const prompt =

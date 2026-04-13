@@ -69,7 +69,7 @@ export function FlashcardsTab({
         process.env.NEXT_PUBLIC_GEMINI_API_KEY!,
       );
       const model = genAI.getGenerativeModel({
-        model: "gemini-3.1-flash-lite-preview",
+        model: "gemini-2.5-flash",
       });
 
       const approxPages = Math.ceil(documentContent.length / 2000);

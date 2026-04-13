@@ -8,7 +8,6 @@ export async function POST(req: Request) {
     // Récupérer les données de la requête
     const { message, context, conversationId, documentId } = await req.json();
 
-
     if (!message) {
       return NextResponse.json({ error: "Message requis" }, { status: 400 });
     }
@@ -16,13 +15,13 @@ export async function POST(req: Request) {
     // Initialiser Gemini avec ta clé
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
     const model = genAI.getGenerativeModel({
-      model: "gemini-3.1-flash-lite-preview", // Modèle gratuit
+      model: "gemini-2.5-flash", // Modèle gratuit
     });
 
     // Construire le prompt avec le contexte du document
     const prompt = PROMPTS.CHAT(
       context || "Aucun contexte spécifique trouvé.",
-      message
+      message,
     );
 
     // Générer la réponse avec Gemini
@@ -30,14 +29,12 @@ export async function POST(req: Request) {
     const response = await result.response;
     const text = response.text();
 
-
     // Retourner la réponse en JSON
     return NextResponse.json({
       response: text,
       success: true,
     });
   } catch (error) {
-
     // En cas d'erreur, retourner un message d'erreur
     return NextResponse.json(
       {
