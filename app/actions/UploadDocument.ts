@@ -6,11 +6,13 @@ import { ApiError } from "@/lib/types/common";
 import { PROMPTS } from "@/lib/prompts";
 // @ts-expect-error - pdf-parse n'a pas de types TypeScript
 import pdf from "pdf-parse";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Mistral } from "@mistralai/mistralai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const mistral = new Mistral({
+  apiKey: process.env.MISTRAL_API_KEY!,
+});
 
-// Fonction OCR avec Gemini Vision
+// Fonction OCR avec Mistral Vision
 async function extractTextWithOCR(
   file: File,
 ): Promise<{ text: string; pages: number }> {
@@ -26,30 +28,31 @@ async function extractTextWithOCR(
     const bytes = await file.arrayBuffer();
     const base64 = Buffer.from(bytes).toString("base64");
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 8192,
-      },
+    const result = await mistral.chat.complete({
+      model: "mistral-small-latest",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: PROMPTS.OCR,
+            },
+            {
+              type: "image_url",
+              imageUrl: {
+                url: `data:${file.type};base64,${base64}`,
+              },
+            },
+          ],
+        },
+      ],
     });
 
-    const prompt = PROMPTS.OCR;
-
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64,
-          mimeType: file.type,
-        },
-      },
-    ]);
-
-    const text = result.response.text();
+    const text = result.choices[0].message.content || "";
 
     if (!text || text.trim().length === 0) {
-      throw new Error("Gemini n'a trouvé aucun texte dans le document");
+      throw new Error("Mistral n'a trouvé aucun texte dans le document");
     }
 
     const pages = Math.max(1, (text.match(/Page \d+:/g) || []).length);
@@ -123,7 +126,7 @@ export async function uploadDocument(formData: FormData) {
           fullText = ocrResult.text;
           numPages = ocrResult.pages;
           extractionSuccess = true;
-          extractionMessage = "Texte extrait avec OCR (Gemini Vision)";
+          extractionMessage = "Texte extrait avec OCR (Mistral Vision)";
         } catch {
           extractionSuccess = false;
           extractionMessage =
@@ -179,14 +182,12 @@ export async function uploadDocument(formData: FormData) {
 
       after(async () => {
         try {
-          await processDocumentWithGemini(doc.id, fullText);
-        } catch {
-
+          await processDocumentWithMistral(doc.id, fullText);
+        } catch (error) {
           await supabase
             .from("documents")
             .update({ status: "erreur" })
             .eq("id", doc.id);
-
         }
       });
     } else {
@@ -234,18 +235,13 @@ async function asyncPool<T, R>(
   return Promise.all(ret);
 }
 
-async function processDocumentWithGemini(docId: string, text: string) {
+async function processDocumentWithMistral(docId: string, text: string) {
   const maxRetries = 2;
   let retryCount = 0;
 
   while (retryCount <= maxRetries) {
     try {
-
       const chunks = splitIntoChunks(text, 1000);
-
-      const embeddingModel = genAI.getGenerativeModel({
-        model: "gemini-embedding-001",
-      });
 
       const results: Array<{
         index: number;
@@ -257,7 +253,10 @@ async function processDocumentWithGemini(docId: string, text: string) {
 
         try {
 
-          const embeddingPromise = embeddingModel.embedContent(chunks[i]);
+          const embeddingPromise = mistral.embeddings.create({
+            model: "mistral-embed",
+            inputs: [chunks[i]],
+          });
           const timeoutChunk = new Promise<never>((_, reject) => {
             setTimeout(
               () => reject(new Error(`Timeout chunk ${i + 1} après 30s`)),
@@ -269,12 +268,12 @@ async function processDocumentWithGemini(docId: string, text: string) {
 
           results.push({
             index: i,
-            embedding: result.embedding.values,
+            embedding: result.data[0].embedding,
             content: chunks[i],
           });
 
-        } catch {
-          throw new Error("Embedding generation failed");
+        } catch (chunkError) {
+          throw new Error(`Embedding generation failed for chunk ${i + 1}: ${chunkError.message}`);
         }
       }
 

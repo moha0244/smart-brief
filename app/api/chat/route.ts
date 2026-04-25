@@ -1,6 +1,6 @@
 // app/api/chat/route.ts
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Mistral } from "@mistralai/mistralai";
 import { PROMPTS } from "@/lib/prompts";
 
 export async function POST(req: Request) {
@@ -12,11 +12,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Message requis" }, { status: 400 });
     }
 
-    // Initialiser Gemini avec ta clé
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash", // Modèle gratuit
+    // Initialiser Mistral avec ta clé
+    const mistral = new Mistral({
+      apiKey: process.env.MISTRAL_API_KEY!,
     });
+    
 
     // Construire le prompt avec le contexte du document
     const prompt = PROMPTS.CHAT(
@@ -24,10 +24,12 @@ export async function POST(req: Request) {
       message,
     );
 
-    // Générer la réponse avec Gemini
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    // Générer la réponse avec Mistral
+    const result = await mistral.chat.complete({
+      model: "mistral-small-latest",
+      messages: [{ role: "user", content: prompt }],
+    });
+    const text = result.choices[0].message.content;
 
     // Retourner la réponse en JSON
     return NextResponse.json({

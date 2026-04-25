@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Mistral } from "@mistralai/mistralai";
 import { supabase } from "@/lib/supabase";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ConversationSidebar } from "./chat/ConversationSidebar";
@@ -252,15 +252,15 @@ export function ChatTab({ documentId }: ChatTabProps) {
 
   const findRelevantChunks = async (question: string) => {
     try {
-      const genAI = new GoogleGenerativeAI(
-        process.env.NEXT_PUBLIC_GEMINI_API_KEY!,
-      );
-      const embeddingModel = genAI.getGenerativeModel({
-        model: "gemini-embedding-001",
+      const mistral = new Mistral({
+        apiKey: process.env.NEXT_PUBLIC_MISTRAL_API_KEY!,
       });
 
-      const result = await embeddingModel.embedContent(question);
-      const questionEmbedding = result.embedding.values;
+      const result = await mistral.embeddings.create({
+        model: "mistral-embed",
+        inputs: [question],
+      });
+      const questionEmbedding = result.data[0].embedding;
 
       const { data: allChunks, error } = await supabase
         .from("document_chunks")

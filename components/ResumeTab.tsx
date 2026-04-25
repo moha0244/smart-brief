@@ -7,7 +7,7 @@ import { ResumeSections } from "./resume/ResumeSections";
 import { FiCpu } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Mistral } from "@mistralai/mistralai";
 import { supabase } from "@/lib/supabase";
 
 import { ResumeTabProps, ResumeData } from "@/lib/types";
@@ -65,11 +65,8 @@ export function ResumeTab({ documentId, documentContent }: ResumeTabProps) {
     setError(null);
 
     try {
-      const genAI = new GoogleGenerativeAI(
-        process.env.NEXT_PUBLIC_GEMINI_API_KEY!,
-      );
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+      const mistral = new Mistral({
+        apiKey: process.env.NEXT_PUBLIC_MISTRAL_API_KEY!,
       });
 
       const prompt =
@@ -77,9 +74,12 @@ export function ResumeTab({ documentId, documentContent }: ResumeTabProps) {
           resumeLength.toUpperCase() as keyof typeof PROMPTS.RESUME
         ](documentContent);
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      const result = await mistral.chat.complete({
+        model: "mistral-small-latest",
+        messages: [{ role: "user", content: prompt }],
+      });
+      const response = result.choices[0].message.content || "";
+      const text = response;
 
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("Réponse invalide");

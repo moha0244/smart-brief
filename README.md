@@ -5,7 +5,7 @@ Smart Brief est une application web intelligente qui vous aide à analyser et co
 ## Fonctionnalités
 
 - **Upload de documents PDF** : Importez facilement vos fichiers PDF
-- **Extraction de texte intelligente** : pdf-parse + OCR (Gemini Vision) pour les documents scannés
+- **Extraction de texte intelligente** : pdf-parse + OCR (Mistral Vision) pour les documents scannés
 - **Résumés automatiques** : Générez des résumés courts, moyens ou détaillés
 - **Flashcards interactives** : Créez automatiquement des cartes d'apprentissage
 - **Chat intelligent** : Posez des questions sur vos documents et obtenez des réponses pertinentes
@@ -15,7 +15,7 @@ Smart Brief est une application web intelligente qui vous aide à analyser et co
 
 - Node.js 18+
 - npm, yarn, pnpm ou bun
-- Clé API Google Gemini
+- Clé API Mistral AI
 - Compte Supabase
 
 ## Installation
@@ -42,7 +42,7 @@ Smart Brief est une application web intelligente qui vous aide à analyser et co
 
    Éditez `.env.local` et ajoutez :
    ```env
-   GEMINI_API_KEY=votre_clé_api_gemini
+   MISTRAL_API_KEY=votre_clé_api_mistral
    NEXT_PUBLIC_SUPABASE_URL=votre_url_supabase
    NEXT_PUBLIC_SUPABASE_ANON_KEY=votre_clé_anon_supabase
    SUPABASE_SERVICE_ROLE_KEY=votre_clé_service_supabase
@@ -132,10 +132,10 @@ CREATE INDEX documents_session_token_idx ON documents(session_token);
 
 ### Configuration API
 
-1. **Google Gemini API** :
-   - Allez sur [Google AI Studio](https://makersuite.google.com/app/apikey)
+1. **Mistral AI API** :
+   - Allez sur [Mistral AI Console](https://console.mistral.ai/)
    - Créez une clé API
-   - Ajoutez-la à `GEMINI_API_KEY`
+   - Ajoutez-la à `MISTRAL_API_KEY`
 
 2. **Supabase** :
    - Créez un compte sur [supabase.com](https://supabase.com)
@@ -151,7 +151,7 @@ CREATE INDEX documents_session_token_idx ON documents(session_token);
 
 2. **OCR échoue**
    - Vérifiez que le fichier ne dépasse pas 20MB
-   - Assurez-vous que votre clé Gemini est valide
+   - Assurez-vous que votre clé Mistral est valide
    - Vérifiez la console pour les erreurs détaillées
 
 3. **Upload très lent**
@@ -207,7 +207,7 @@ Ce projet est sous licence MIT.
 
 - [Documentation Next.js](https://nextjs.org/docs)
 - [Documentation Supabase](https://supabase.com/docs)
-- [Google Gemini API](https://ai.google.dev/docs)
+- [Mistral AI API](https://docs.mistral.ai/)
 - [pdf-parse](https://www.npmjs.com/package/pdf-parse)
 
 ---

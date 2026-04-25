@@ -112,7 +112,7 @@ FORMAT DE RÉPONSE ATTENDU:
 RÉPONSE:
 `,
 
-  // Prompt pour l'OCR avec Gemini Vision
+  // Prompt pour l'OCR avec Mistral Vision
   OCR: `Extrais tout le texte de ce document PDF scanné.
     
 Instructions:

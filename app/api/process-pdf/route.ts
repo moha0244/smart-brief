@@ -6,6 +6,7 @@ import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase"
 
 export async function POST(req: Request) {
   const { filePath, docId } = await req.json();
+  
 
   try {
     //  Télécharger le fichier depuis le bucket "documents"

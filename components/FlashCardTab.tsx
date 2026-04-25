@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Mistral } from "@mistralai/mistralai";
 import { supabase } from "@/lib/supabase";
 import { LoadingState } from "@/components/ui/LoadingSpinner";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -65,11 +65,8 @@ export function FlashcardsTab({
     setError(null);
 
     try {
-      const genAI = new GoogleGenerativeAI(
-        process.env.NEXT_PUBLIC_GEMINI_API_KEY!,
-      );
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+      const mistral = new Mistral({
+        apiKey: process.env.NEXT_PUBLIC_MISTRAL_API_KEY!,
       });
 
       const approxPages = Math.ceil(documentContent.length / 2000);
@@ -78,9 +75,12 @@ export function FlashcardsTab({
         Math.min(approxPages, 10),
       );
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
+      const result = await mistral.chat.complete({
+        model: "mistral-small-latest",
+        messages: [{ role: "user", content: prompt }],
+      });
+      const response = result.choices[0].message.content || "";
+      const text = response;
 
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("Réponse invalide");
