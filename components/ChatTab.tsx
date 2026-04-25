@@ -260,7 +260,12 @@ export function ChatTab({ documentId }: ChatTabProps) {
         model: "mistral-embed",
         inputs: [question],
       });
-      const questionEmbedding = result.data[0].embedding;
+      
+      if (!result.data?.[0]?.embedding) {
+        throw new Error("No embedding returned for question");
+      }
+      
+      const questionEmbedding = result.data[0].embedding as number[];
 
       const { data: allChunks, error } = await supabase
         .from("document_chunks")
@@ -271,7 +276,6 @@ export function ChatTab({ documentId }: ChatTabProps) {
       if (!allChunks || allChunks.length === 0) {
         return { chunks: [] };
       }
-
 
       const chunksWithSimilarity = processChunks(allChunks, questionEmbedding);
 
