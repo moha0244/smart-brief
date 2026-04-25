@@ -78,7 +78,12 @@ export function ResumeTab({ documentId, documentContent }: ResumeTabProps) {
         model: "mistral-small-latest",
         messages: [{ role: "user", content: prompt }],
       });
-      const response = result.choices[0].message.content || "";
+      
+      if (!result.choices?.[0]?.message?.content) {
+        throw new Error("No response content returned from Mistral");
+      }
+      
+      const response = result.choices[0].message.content as string;
       const text = response;
 
       const jsonMatch = text.match(/\{[\s\S]*\}/);
