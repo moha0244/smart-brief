@@ -16,7 +16,6 @@ export async function POST(req: Request) {
     const mistral = new Mistral({
       apiKey: process.env.MISTRAL_API_KEY!,
     });
-    
 
     // Construire le prompt avec le contexte du document
     const prompt = PROMPTS.CHAT(
@@ -29,7 +28,7 @@ export async function POST(req: Request) {
       model: "mistral-small-latest",
       messages: [{ role: "user", content: prompt }],
     });
-    const text = result.choices[0].message.content;
+    const text = result.choices[0].message?.content;
 
     // Retourner la réponse en JSON
     return NextResponse.json({
