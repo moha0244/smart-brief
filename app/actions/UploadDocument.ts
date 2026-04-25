@@ -49,7 +49,7 @@ async function extractTextWithOCR(
       ],
     });
 
-    const text = result.choices[0].message.content || "";
+    const text = result.choices[0]?.message?.content as string || "";
 
     if (!text || text.trim().length === 0) {
       throw new Error("Mistral n'a trouvé aucun texte dans le document");
@@ -266,6 +266,10 @@ async function processDocumentWithMistral(docId: string, text: string) {
 
           const result = await Promise.race([embeddingPromise, timeoutChunk]);
 
+          if (!result.data?.[0]?.embedding) {
+            throw new Error(`No embedding returned for chunk ${i + 1}`);
+          }
+
           results.push({
             index: i,
             embedding: result.data[0].embedding,
@@ -273,7 +277,8 @@ async function processDocumentWithMistral(docId: string, text: string) {
           });
 
         } catch (chunkError) {
-          throw new Error(`Embedding generation failed for chunk ${i + 1}: ${chunkError.message}`);
+          const errorMessage = chunkError instanceof Error ? chunkError.message : String(chunkError);
+          throw new Error(`Embedding generation failed for chunk ${i + 1}: ${errorMessage}`);
         }
       }
 
