@@ -80,6 +80,10 @@ export async function POST() {
             inputs: [chunks[i]],
           });
 
+          if (!result.data?.[0]?.embedding) {
+            throw new Error(`No embedding returned for chunk ${i + 1}`);
+          }
+
           results.push({
             index: i,
             embedding: result.data[0].embedding,
@@ -89,14 +93,12 @@ export async function POST() {
 
         // Insérer nouveaux chunks
         await asyncPool(2, results, async ({ index, embedding, content }) => {
-          await supabase
-            .from("document_chunks")
-            .insert({
-              document_id: doc.id,
-              content,
-              embedding,
-              chunk_index: index,
-            });
+          await supabase.from("document_chunks").insert({
+            document_id: doc.id,
+            content,
+            embedding,
+            chunk_index: index,
+          });
         });
 
         migrated++;
@@ -111,11 +113,10 @@ export async function POST() {
       migrated,
       failed,
     });
-
   } catch (error) {
     return NextResponse.json(
       { error: "Migration failed", details: error },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
